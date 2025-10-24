@@ -4,29 +4,36 @@ const path = require('path');
 const { initDB } = require('./db/turso');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Initialize database
+initDB();
 
 // Routes
 app.use('/api/products', require('./routes/products'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/cart', require('./routes/cart'));
 
-// Serve frontend
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Server is running' });
 });
 
-// Initialize database and start server
-async function startServer() {
-  await initDB();
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.use(express.static(path.join(__dirname, '../frontend')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+  });
+  
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
-startServer();
+module.exports = app;
