@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { client, initDB } = require('../../backend/db/turso');
+const { createClient } = require('@libsql/client');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,7 +16,21 @@ module.exports = async (req, res) => {
   }
 
   try {
-    await initDB();
+    const client = createClient({
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+
+    // Create users table if not exists
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        name TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     
     const { name, email, password } = req.body;
     
@@ -34,12 +48,20 @@ module.exports = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const result = await client.execute({
-      sql: 'INSERT INTO users (name, email, password) VALUES (?, ?, ?) RETURNING id, name, email',
+    
+    // Insert user
+    await client.execute({
+      sql: 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
       args: [name, email, hashedPassword]
     });
 
-    const user = result.rows[0];
+    // Get the created user
+    const userResult = await client.execute({
+      sql: 'SELECT id, name, email FROM users WHERE email = ?',
+      args: [email]
+    });
+
+    const user = userResult.rows[0];
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
 
     res.status(201).json({
@@ -49,6 +71,6 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     console.error('API Error:', error);
-    res.status(500).json({ error: 'Failed to create user' });
+    res.status(500).json({ error: 'Failed to create user', details: error.message });
   }
-}
+};

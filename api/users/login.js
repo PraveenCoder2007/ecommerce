@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { client, initDB } = require('../../backend/db/turso');
+const { createClient } = require('@libsql/client');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,7 +16,10 @@ module.exports = async (req, res) => {
   }
 
   try {
-    await initDB();
+    const client = createClient({
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
     
     const { email, password } = req.body;
 
@@ -49,6 +52,6 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     console.error('API Error:', error);
-    res.status(500).json({ error: 'Failed to login' });
+    res.status(500).json({ error: 'Failed to login', details: error.message });
   }
-}
+};
