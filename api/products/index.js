@@ -1,8 +1,6 @@
-const { createClient } = require('@libsql/client');
-
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -13,39 +11,48 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    const client = createClient({
-      url: process.env.TURSO_DATABASE_URL,
-      authToken: process.env.TURSO_AUTH_TOKEN,
-    });
-
-    // Create table if not exists
-    await client.execute(`
-      CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        description TEXT,
-        price REAL NOT NULL,
-        image_url TEXT,
-        stock INTEGER DEFAULT 0
-      )
-    `);
-
-    // Check if products exist, if not insert sample data
-    const countResult = await client.execute('SELECT COUNT(*) as count FROM products');
-    if (countResult.rows[0].count === 0) {
-      await client.execute(`
-        INSERT INTO products (name, description, price, image_url, stock) VALUES
-        ('Wireless Headphones', 'High-quality wireless headphones', 99.99, 'https://via.placeholder.com/300x300?text=Headphones', 50),
-        ('Smartphone', 'Latest smartphone with advanced features', 699.99, 'https://via.placeholder.com/300x300?text=Smartphone', 30),
-        ('Laptop', 'Powerful laptop for work and gaming', 1299.99, 'https://via.placeholder.com/300x300?text=Laptop', 20)
-      `);
+  const products = [
+    {
+      id: 1,
+      name: 'Wireless Headphones',
+      description: 'High-quality wireless headphones with noise cancellation',
+      price: 99.99,
+      image_url: 'https://via.placeholder.com/300x300?text=Headphones',
+      stock: 50
+    },
+    {
+      id: 2,
+      name: 'Smartphone',
+      description: 'Latest smartphone with advanced features',
+      price: 699.99,
+      image_url: 'https://via.placeholder.com/300x300?text=Smartphone',
+      stock: 30
+    },
+    {
+      id: 3,
+      name: 'Laptop',
+      description: 'Powerful laptop for work and gaming',
+      price: 1299.99,
+      image_url: 'https://via.placeholder.com/300x300?text=Laptop',
+      stock: 20
+    },
+    {
+      id: 4,
+      name: 'Smart Watch',
+      description: 'Fitness tracking smartwatch',
+      price: 249.99,
+      image_url: 'https://via.placeholder.com/300x300?text=Watch',
+      stock: 40
+    },
+    {
+      id: 5,
+      name: 'Tablet',
+      description: '10-inch tablet with high-resolution display',
+      price: 399.99,
+      image_url: 'https://via.placeholder.com/300x300?text=Tablet',
+      stock: 25
     }
+  ];
 
-    const result = await client.execute('SELECT * FROM products');
-    return res.json(result.rows);
-  } catch (error) {
-    console.error('API Error:', error);
-    return res.status(500).json({ error: 'Failed to fetch products', details: error.message });
-  }
+  return res.json(products);
 };
